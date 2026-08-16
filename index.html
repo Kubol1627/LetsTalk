@@ -4,37 +4,77 @@
   <meta charset="UTF-8">
   <title>LetsTalk</title>
   <style>
-    body { font-family: sans-serif; background: #2f3136; color: white; margin: 0; }
-    #login-box { display: flex; height: 100vh; align-items: center; justify-content: center; text-align: center; }
-    #chat-box { display: none; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: #36393f; }
-    #messages { flex-grow: 1; padding: 20px; overflow-y: auto; }
-    #input-area { display: flex; padding: 15px; background: #40444b; }
-    input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; background: #202225; color: white; }
-    button { padding: 10px 15px; margin-left: 10px; background: #5865F2; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    body { margin: 0; font-family: 'gg sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #36393f; color: #dcddde; display: flex; height: 100vh; overflow: hidden; }
+    
+    /* Ekran logowania */
+    #login-box { display: flex; width: 100%; height: 100vh; align-items: center; justify-content: center; background: #36393f; }
+    .login-panel { background: #2f3136; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); text-align: center; }
+    .login-panel h1 { color: white; margin-top: 0; }
+    
+    /* Glowna apka */
+    #app-container { display: none; width: 100%; height: 100vh; }
+    
+    /* Pasek boczny */
+    #sidebar { width: 240px; background: #2f3136; display: flex; flex-direction: column; }
+    #sidebar-header { padding: 15px; font-weight: bold; border-bottom: 1px solid #202225; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    #channels { padding: 10px; flex-grow: 1; }
+    .channel { padding: 8px 10px; color: #8e9297; cursor: pointer; border-radius: 4px; margin-bottom: 2px; }
+    .channel:hover, .channel.active { background: #393c43; color: white; }
+    
+    /* Czat */
+    #main-chat { flex-grow: 1; display: flex; flex-direction: column; background: #36393f; }
+    #chat-header { padding: 15px; font-weight: bold; border-bottom: 1px solid #202225; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    #messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    
+    /* Wiadomosci */
+    .message { display: flex; gap: 15px; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865F2; flex-shrink: 0; }
+    .msg-content { display: flex; flex-direction: column; }
+    .msg-header { display: flex; align-items: baseline; gap: 10px; }
+    .msg-user { color: white; font-weight: bold; font-size: 1rem; }
+    .msg-date { color: #72767d; font-size: 0.75rem; }
+    .msg-text { color: #dcddde; margin-top: 4px; line-height: 1.4; }
+    
+    /* Pole tekstowe */
+    #input-area { padding: 0 20px 20px 20px; }
+    .input-wrapper { display: flex; background: #40444b; border-radius: 8px; padding: 10px 15px; }
+    input { flex-grow: 1; background: transparent; border: none; color: white; outline: none; font-size: 1rem; }
+    button { background: #5865F2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    button:hover { background: #4752c4; }
   </style>
 </head>
 <body>
 
-  <!-- Ekran logowania -->
+  <!-- Logowanie -->
   <div id="login-box">
-    <div>
-      <h1>LetsTalk</h1>
+    <div class="login-panel">
+      <h1>Witaj ponownie!</h1>
       <button id="login-btn">Zaloguj przez Google</button>
     </div>
   </div>
 
-  <!-- Ekran czatu -->
-  <div id="chat-box">
-    <div id="messages">
-      <p><em>Witaj na LetsTalk!</em></p>
+  <!-- Aplikacja -->
+  <div id="app-container">
+    <div id="sidebar">
+      <div id="sidebar-header">LetsTalk Serwer</div>
+      <div id="channels">
+        <div class="channel active"># ogólny</div>
+        <div class="channel"># memy</div>
+      </div>
     </div>
-    <div id="input-area">
-      <input type="text" id="msg-input" placeholder="Napisz cos fajnego...">
-      <button id="send-btn">Wyślij</button>
+    
+    <div id="main-chat">
+      <div id="chat-header"># ogólny</div>
+      <div id="messages"></div>
+      <div id="input-area">
+        <div class="input-wrapper">
+          <input type="text" id="msg-input" placeholder="Napisz na #ogólny...">
+          <button id="send-btn">Wyślij</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Firebase Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -54,33 +94,40 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    document.getElementById('login-btn').onclick = () => {
-      const provider = new GoogleAuthProvider();
-      signInWithPopup(auth, provider);
-    };
+    document.getElementById('login-btn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
 
     onAuthStateChanged(auth, user => {
       if (user) {
         document.getElementById('login-box').style.display = 'none';
-        document.getElementById('chat-box').style.display = 'flex';
+        document.getElementById('app-container').style.display = 'flex';
         ladujWiadomosci();
       } else {
         document.getElementById('login-box').style.display = 'flex';
-        document.getElementById('chat-box').style.display = 'none';
+        document.getElementById('app-container').style.display = 'none';
       }
     });
 
     function ladujWiadomosci() {
-      const wiadomosciRef = collection(db, 'wiadomosci');
-      const q = query(wiadomosciRef, orderBy('createdAt'));
-
+      const q = query(collection(db, 'wiadomosci'), orderBy('createdAt'));
       onSnapshot(q, (snapshot) => {
         const box = document.getElementById('messages');
         box.innerHTML = ''; 
         snapshot.forEach(doc => {
           const dane = doc.data();
           if (dane.createdAt) {
-            box.innerHTML += `<p><b>${dane.user}:</b> ${dane.text}</p>`;
+            const date = new Date(dane.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            box.innerHTML += `
+              <div class="message">
+                <div class="avatar"></div>
+                <div class="msg-content">
+                  <div class="msg-header">
+                    <span class="msg-user">${dane.user}</span>
+                    <span class="msg-date">Dziś o ${date}</span>
+                  </div>
+                  <div class="msg-text">${dane.text}</div>
+                </div>
+              </div>
+            `;
           }
         });
         box.scrollTop = box.scrollHeight;
@@ -88,16 +135,15 @@
 
       document.getElementById('send-btn').onclick = async () => {
         const input = document.getElementById('msg-input');
-        if (input.value.trim() === '') return;
-
-        await addDoc(wiadomosciRef, {
-          text: input.value,
-          user: auth.currentUser.displayName,
-          createdAt: serverTimestamp()
-        });
-        
-        input.value = '';
+        if (input.value.trim() !== '') {
+          await addDoc(collection(db, 'wiadomosci'), { text: input.value, user: auth.currentUser.displayName, createdAt: serverTimestamp() });
+          input.value = '';
+        }
       };
+      
+      document.getElementById('msg-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') document.getElementById('send-btn').click();
+      });
     }
   </script>
 </body>
