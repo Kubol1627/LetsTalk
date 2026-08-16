@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>LetsTalk</title>
+  <style>
+    body { font-family: sans-serif; background: #2f3136; color: white; margin: 0; }
+    #login-box { display: flex; height: 100vh; align-items: center; justify-content: center; text-align: center; }
+    #chat-box { display: none; flex-direction: column; height: 100vh; max-width: 800px; margin: 0 auto; background: #36393f; }
+    #messages { flex-grow: 1; padding: 20px; overflow-y: auto; }
+    #input-area { display: flex; padding: 15px; background: #40444b; }
+    input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; background: #202225; color: white; }
+    button { padding: 10px 15px; margin-left: 10px; background: #5865F2; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- Ekran logowania -->
+  <div id="login-box">
+    <div>
+      <h1>LetsTalk</h1>
+      <button id="login-btn">Zaloguj przez Google</button>
+    </div>
+  </div>
+
+  <!-- Ekran czatu -->
+  <div id="chat-box">
+    <div id="messages">
+      <p><em>Witaj na LetsTalk!</em></p>
+    </div>
+    <div id="input-area">
+      <input type="text" id="msg-input" placeholder="Napisz cos fajnego...">
+      <button id="send-btn">Wyślij</button>
+    </div>
+  </div>
+
+  <!-- Cała logika Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrSiV_DWi6AHvKKAm46ugi1srtWhUytvI",
+      authDomain: "letstalk-7ddef.firebaseapp.com",
+      projectId: "letstalk-7ddef",
+      storageBucket: "letstalk-7ddef.firebasestorage.app",
+      messagingSenderId: "338209648947",
+      appId: "1:338209648947:web:bd27a5bf2b58e648714e46",
+      measurementId: "G-F2LXFHQQNZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    document.getElementById('login-btn').onclick = () => {
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(auth, provider);
+    };
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        document.getElementById('login-box').style.display = 'none';
+        document.getElementById('chat-box').style.display = 'flex';
+        ladujWiadomosci();
+      } else {
+        document.getElementById('login-box').style.display = 'flex';
+        document.getElementById('chat-box').style.display = 'none';
+      }
+    });
+
+    function ladujWiadomosci() {
+      const wiadomosciRef = collection(db, 'wiadomosci');
+      const q = query(wiadomosciRef, orderBy('createdAt'));
+
+      onSnapshot(q, (snapshot) => {
+        const box = document.getElementById('messages');
+        box.innerHTML = ''; 
+        snapshot.forEach(doc => {
+          const dane = doc.data();
+          if (dane.createdAt) {
+            box.innerHTML += `<p><b>${dane.user}:</b> ${dane.text}</p>`;
+          }
+        });
+        box.scrollTop = box.scrollHeight;
+      });
+
+      document.getElementById('send-btn').onclick = async () => {
+        const input = document.getElementById('msg-input');
+        if (input.value.trim() === '') return;
+
+        await addDoc(wiadomosciRef, {
+          text: input.value,
+          user: auth.currentUser.displayName,
+          createdAt: serverTimestamp()
+        });
+        
+        input.value = '';
+      };
+    }
+  </script>
+</body>
+</html>
